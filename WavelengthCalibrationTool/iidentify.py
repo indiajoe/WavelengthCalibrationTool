@@ -13,6 +13,7 @@ from multiprocessing import Process, Pipe
 import numpy as np
 import matplotlib.pyplot as plt
 from matplotlib.widgets import SpanSelector
+from matplotlib.backends.backend_pdf import PdfPages
 from astropy.io import fits
 from astropy.stats import sigma_clip
 from termios import tcflush, TCIOFLUSH
@@ -301,11 +302,14 @@ def AddlinesbyInteractiveSelection(SpectrumY,disp_filename,comm_pipe=None):
         writeto_dispersion_inputfile(disp_filename,wavl,pix,sigma)
 
 
-def TryToFitNewLinesinSpectrum(SpectrumY,disp_filename,LineSigma=1.5,reference_dispfile = None, SpectrumY_Var = None):
+def TryToFitNewLinesinSpectrum(SpectrumY,disp_filename,LineSigma=1.5,reference_dispfile = None, 
+                               SpectrumY_Var = None, guess_function='c5', plot_pdf_output = None):
     """ Try to fit gaussian at the line wavelengths without pixel position in the disp_filename.
     And add the fitted pixels values to the file.
     If reference_dispfile is provided, data in that file will be used to claculate dispersion solution
     SpectrumY_Var (optional): Variance of the SpectrumY array if need to be considerd in line fitting.
+    guess_function (default='c5'): Polynomial model to use to interpolate existing solution for initial guess of new line positions.
+    plot_pdf_output (optional): Save the plots of the individual line fits in a multipage pdf file is a filename is provided.
     """
     if reference_dispfile is None:  # use the entry in disp_filename itself
         reference_dispfile = disp_filename
@@ -317,20 +321,37 @@ def TryToFitNewLinesinSpectrum(SpectrumY,disp_filename,LineSigma=1.5,reference_d
     # Dispertion function
     disp_func = get_fitted_function(pixels=pixels_inp,
                                     wavel=wavelengths_inp,
-                                    sigma=sigma_inp, method='c6')
+                                    sigma=sigma_inp, method=guess_function)
 
     pix_fitted = []
     sigma_fitted = []
+    if plot_pdf_output is not None:
+        pdfplots = PdfPages(plot_pdf_output)
     for wavel in wavelengths_tofit:
         XPixarray = np.arange(len(SpectrumY))
         Xpos = NearestIndex(disp_func(XPixarray),wavel)
-        Ampl_init = np.max(SpectrumY[int(np.rint(Xpos-3*LineSigma)):int(np.rint(Xpos+3*LineSigma))+1]) - \
-                    np.min(SpectrumY[int(np.rint(Xpos-3*LineSigma)):int(np.rint(Xpos+3*LineSigma))+1])
+        Lstart = int(np.rint(Xpos-3*LineSigma))
+        Lend = int(np.rint(Xpos+3*LineSigma))+1
+        Ampl_init = np.max(SpectrumY[Lstart:Lend]) - \
+                    np.min(SpectrumY[Lstart:Lend])
         # Fit a Guassian line
         Model_fit = FitLineToData(XPixarray,SpectrumY,Xpos,Ampl_init,
                                   AmpisBkgSubtracted=False,Sigma = LineSigma, SpecY_Var = SpectrumY_Var)
         pix_fitted.append(Model_fit.mean_0.value)
         sigma_fitted.append(1) # to be updated later with actual error
+        if plot_pdf_output is not None:
+            # Make the plots to save to the pdf file
+            fig = plt.figure(figsize=(6, 6))
+            plt.plot(XPixarray[Lstart:Lend],SpectrumY[Lstart:Lend],'.',color='k')
+            if SpectrumY_Var is not None:
+                plt.errorbar(XPixarray[Lstart:Lend],SpectrumY[Lstart:Lend],yerr=np.sqrt(SpectrumY_Var[Lstart:Lend]),color='k')
+            plt.plot(np.linspace(Lstart,Lend,(Lend-Lstart)*10),Model_fit(np.linspace(Lstart,Lend,(Lend-Lstart)*10)),color='r',label=str(Model_fit.mean_0.value))
+            plt.title('Wavl = {0}'.format(wavel))
+            plt.legend()
+            pdfplots.savefig()
+            plt.close()
+    if plot_pdf_output is not None:
+        pdfplots.close()
     # Write the fitted pixel positions
     if pix_fitted:
         writeto_dispersion_inputfile(disp_filename,wavelengths_tofit,pix_fitted,sigma_fitted)

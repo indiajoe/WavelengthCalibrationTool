@@ -73,9 +73,11 @@ def main(raw_args=None):
                 for wavel in wavelengths_inp + wavelengths_tofit :
                     outdispfile.write('{0} # Re-Fitted\n'.format(wavel))
 
+        plot_pdf_output = Outdisp_fname.format(order)+'_linefit_plots.pdf' if args.SavePlots else None
         # Now recalibrate the positions of the line by fitting lines again to new positions
         TryToFitNewLinesinSpectrum(SpectrumY,Outdisp_fname.format(order),LineSigma=1.5,
-                                   reference_dispfile = Refdisp_fname.format(order), SpectrumY_Var=SpectrumY_Var)
+                                   reference_dispfile = Refdisp_fname.format(order), SpectrumY_Var=SpectrumY_Var,
+                                   guess_function=args.ModelForDispersion, plot_pdf_output=plot_pdf_output)
 
         print('Dispersion ASCII input file saved in file://{0}'.format(Outdisp_fname.format(order)))
 
