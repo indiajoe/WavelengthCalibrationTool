@@ -22,6 +22,8 @@ def parse_args(raw_args=None):
                         help="Reference file containing the table of Wavelengths, Pixels, Error")
     parser.add_argument('OutDispTableFile', type=str,
                         help="Output Filename to write the table of Wavelengths, Pixels, Error")
+    parser.add_argument('--PixShiftGuess', type=float,default=0.,
+                        help="Initial Guess of pixel shift to match the `RefDispTableFile` reference spectrum to the input `SpectrumFluxFile`. Default is 0.")
     parser.add_argument('--OutputWavlFile', type=str,
                         help="Output filename to write calibrated Wavelength solution array")
     parser.add_argument('--ModelForDispersion', type=str,default='l6',
@@ -76,7 +78,8 @@ def main(raw_args=None):
         plot_pdf_output = Outdisp_fname.format(order)+'_linefit_plots.pdf' if args.SavePlots else None
         # Now recalibrate the positions of the line by fitting lines again to new positions
         TryToFitNewLinesinSpectrum(SpectrumY,Outdisp_fname.format(order),LineSigma=1.5,
-                                   reference_dispfile = Refdisp_fname.format(order), SpectrumY_Var=SpectrumY_Var,
+                                   reference_dispfile=Refdisp_fname.format(order),
+                                   reference_pixshift=args.PixShiftGuess, SpectrumY_Var=SpectrumY_Var,
                                    guess_function=args.ModelForDispersion, plot_pdf_output=plot_pdf_output)
 
         print('Dispersion ASCII input file saved in file://{0}'.format(Outdisp_fname.format(order)))

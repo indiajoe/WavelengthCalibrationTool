@@ -302,24 +302,26 @@ def AddlinesbyInteractiveSelection(SpectrumY,disp_filename,comm_pipe=None):
         writeto_dispersion_inputfile(disp_filename,wavl,pix,sigma)
 
 
-def TryToFitNewLinesinSpectrum(SpectrumY,disp_filename,LineSigma=1.5,reference_dispfile = None, 
+def TryToFitNewLinesinSpectrum(SpectrumY,disp_filename,LineSigma=1.5,reference_dispfile = None,reference_pixshift = 0,
                                SpectrumY_Var = None, guess_function='c5', plot_pdf_output = None):
     """ Try to fit gaussian at the line wavelengths without pixel position in the disp_filename.
     And add the fitted pixels values to the file.
-    If reference_dispfile is provided, data in that file will be used to claculate dispersion solution
+    If reference_dispfile is provided, data in that file will be used to claculate dispersion solution.
+    reference_pixshift (default= 0): Optional pixel shift to apply to pixel entires in `reference_dispfile`. Useful for correcting large shifts.
     SpectrumY_Var (optional): Variance of the SpectrumY array if need to be considerd in line fitting.
     guess_function (default='c5'): Polynomial model to use to interpolate existing solution for initial guess of new line positions.
     plot_pdf_output (optional): Save the plots of the individual line fits in a multipage pdf file is a filename is provided.
     """
     if reference_dispfile is None:  # use the entry in disp_filename itself
         reference_dispfile = disp_filename
+        reference_pixshift = 0  # No pixel shift needed if reference file is not provided
 
     # First read the existing calibration
     _ , (wavelengths_inp,pixels_inp,sigma_inp) = read_dispersion_inputfile(reference_dispfile)
     # Now read the wavelengths to calibrate
     wavelengths_tofit, (_discard1,_discard2,_discard3) = read_dispersion_inputfile(disp_filename)
     # Dispertion function
-    disp_func = get_fitted_function(pixels=pixels_inp,
+    disp_func = get_fitted_function(pixels=np.array(pixels_inp)+reference_pixshift,
                                     wavel=wavelengths_inp,
                                     sigma=sigma_inp, method=guess_function)
 
