@@ -361,7 +361,7 @@ def ReCalibrateDispersionSolution(SpectrumY,RefSpectrum,method='p3',initial_gues
 
 def calculate_pixshift_with_phase_cross_correlation(shifted_spec,reference_spec,upsample_factor=10):
     """ Returns the pixel shift between `shifted_spec` and `reference_spec` at the resolution of 1/upsample_factor """
-    shift = registration.phase_cross_correlation(reference_spec,shifted_spec,upsample_factor=upsample_factor,return_error=False)[0]
+    shift = registration.phase_cross_correlation(reference_spec,shifted_spec,upsample_factor=upsample_factor)[0]
     if isinstance(shift,np.ndarray): # Support for latest skimage version
         return shift[0]
     else:
